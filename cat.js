@@ -21,6 +21,8 @@ function init() {
     var projectionHatchingName = "generated_";
     var projectionIntensityName = "intensity_";
 
+    var dynamicVisualization = true;
+
     displayDefaultImage();
 
     // Paint on originalImgCanvas
@@ -77,14 +79,19 @@ function init() {
               hatchingCanvasCtx.fillRect(j * step, 0, Math.round(step) + 1, projectionCanvasHeight);
           }
       }  
-
-      // Static visualization
-      //backprojectionGathering();
       
-      // Visualization with animation
-      scale = 0.01;
-      //window.requestAnimationFrame(animationBackprojectionGathering);
-      
+      if(dynamicVisualization) {
+          // Visualization with animation
+          animationAngle = fromAngle;
+          if(!animationIsScheduled) {
+              animationIsScheduled = true;
+              setTimeout(animationBackprojectionGathering, animationDelay);
+          }
+      } else {
+          // Static visualization
+          backprojectionGathering();
+      }
+            
     });
     
     function createCanvasElement(name) {
@@ -105,8 +112,12 @@ function init() {
           projectionImages.removeChild(projectionImages.firstChild);
       }
       
+      // Fill tomography canvas with white color
       var mycanvas = document.getElementById("tomographyCanvas");
-      var mycanvasCtx = mycanvas.getContext("2d");
+      var mycanvasCtx = mycanvas.getContext("2d");      
+      mycanvasCtx.globalAlpha = 1;
+      mycanvasCtx.fillStyle = 'white';
+      mycanvasCtx.fillRect(0, 0, width, height);
     }
     
     function traceXRays(angle, radius, dx, dy, raysCnt, projectionLength) {
@@ -158,40 +169,45 @@ function init() {
       }
     }
     
-    var scale = 0.01;
-    window.requestAnimationFrame(animationBackprojectionGathering);
+    var animationAngle = fromAngle;
+    var animationDelay = 500;
+    var animationIsScheduled = true;
+    if(dynamicVisualization) {
+        setTimeout(animationBackprojectionGathering, animationDelay);
+    }
     function animationBackprojectionGathering() {
       var mycanvas = document.getElementById("tomographyCanvas");
       var mycanvasCtx = mycanvas.getContext("2d");
       var width = mycanvas.width;
       var height = mycanvas.height;
       
-      scale += 0.001;
-      if(scale > 1) {
-        scale = 0.01;
+      if(animationAngle == fromAngle) {
+          // Fill canvas with white color
+          mycanvasCtx.globalAlpha = 1;
+          mycanvasCtx.fillStyle = 'white';
+          mycanvasCtx.fillRect(0, 0, width, height);
       }
-      // Fill canvas with white color
-      mycanvasCtx.globalAlpha = 1;
-      mycanvasCtx.fillStyle = 'white';
-      mycanvasCtx.fillRect(0, 0, width, height);
       
       // http://stackoverflow.com/questions/2359537/how-to-change-the-opacity-alpha-transparency-of-an-element-in-a-canvas-elemen
       mycanvasCtx.globalAlpha = angleStep * 2.0 / (toAngle - fromAngle + 1);
-      for(var i = fromAngle; i <= toAngle; i+=angleStep) {
-          var c = document.getElementById(projectionHatchingName + i);
-          if(!c) {
-            break;
-          }
+      var c = document.getElementById(projectionHatchingName + animationAngle);
+      if(c) {
           // http://creativejs.com/2012/01/day-10-drawing-rotated-images-into-canvas/
           mycanvasCtx.save(); 
           mycanvasCtx.translate(width / 2, height / 2);
-          mycanvasCtx.rotate((i + 270) * Math.PI / 180);
-          mycanvasCtx.drawImage(c, -c.width / 2, -c.height / 2, c.width, c.height * scale);
-          
+          mycanvasCtx.rotate((animationAngle + 270) * Math.PI / 180);
+          mycanvasCtx.drawImage(c, -c.width / 2, -c.height / 2, c.width, c.height);      
           mycanvasCtx.restore();
       }
       
-      window.requestAnimationFrame(animationBackprojectionGathering);
+      if(animationAngle != toAngle) {
+          animationAngle += angleStep;
+          setTimeout(animationBackprojectionGathering, animationDelay);
+      } else {
+          animationAngle = fromAngle;
+          animationIsScheduled = false;
+          //setTimeout(animationBackprojectionGathering, animationDelay * 5);
+      }
     }
 
     function displayDefaultImage(canvas) {
