@@ -9,19 +9,22 @@ function init() {
 
     var dx = width / 2;
     var dy = height / 2;
-    var r = 70;
+    var tomographRadius = 80;
 
-    var projectionLength = r * 2;
+    var projectionLength = tomographRadius * 2;
     var raysCnt = 70;
     var fromAngle = 0;
     var toAngle = 360;
     var angleStep = 10;
 
     var projectionCanvasHeight = projectionLength;
+    var projectionHatchingName = "generated_";
+    var projectionIntensityName = "intensity_";
 
     displayDefaultImage();
 
     // Paint on originalImgCanvas
+    // TODO: implement a proper way of painiting
     originalImgCanvas.addEventListener('click', function(event) { 
         var x = event.pageX - elemLeft;
         var y = event.pageY - elemTop;
@@ -35,61 +38,76 @@ function init() {
     var simulateBtn = document.getElementById("simulateBtn");
     simulateBtn.addEventListener('click', function(event) { 
 
+      cleanUpPreviousResults();
+
       var projectionImages = document.getElementById("projectionImages");
-      while (projectionImages.firstChild) {
-          projectionImages.removeChild(projectionImages.firstChild);
-      }
 
       for(var i = fromAngle; i <= toAngle; i+=angleStep) {
+
           var al = i * Math.PI / 180;
-          var circleX = dx + r * Math.cos(al);
-          var circleY = dy + r * Math.sin(al);
-
-          /*
-          // Radius vectors and tangent lines
-          line(dx, dy, circleX, circleY);
-          line(circleX - r * Math.sin(al), circleY + r * Math.cos(al), circleX + r * Math.sin(al), circleY - r * Math.cos(al));
-          */
-
-          var projection = traceXRays(al, r, dx, dy, raysCnt, projectionLength);
-
-          var mycanvas = document.createElement("canvas");
-          mycanvas.id = "generated_" + i;
-          mycanvas.width = projectionLength;
-          mycanvas.height = projectionCanvasHeight;
-          mycanvas.style.border   = "1px solid";
-          var mycanvasCtx = mycanvas.getContext("2d");
+          var projection = traceXRays(al, tomographRadius, dx, dy, raysCnt, projectionLength);
 
           projectionImages.appendChild(document.createElement("br")); 
           projectionImages.appendChild(document.createTextNode("angle of projection: " + i + String.fromCharCode(176)));
           projectionImages.appendChild(document.createElement("br"));
-          projectionImages.appendChild(mycanvas);
 
           var step = projectionLength * 1.0 / raysCnt;
 
-          /*
-          mycanvasCtx.beginPath();
-          mycanvasCtx.moveTo(0, projection[0] * (projectionCanvasHeight - 10));
-
+          // Display intensity image
+          var intensityCanvas = createCanvasElement(projectionIntensityName + i);
+          var intensityCanvasCtx = intensityCanvas.getContext("2d");
+          projectionImages.appendChild(intensityCanvas);
+          intensityCanvasCtx.beginPath();
+          intensityCanvasCtx.moveTo(0, projectionCanvasHeight * (1 - projection[0]));
           for(var j = 1; j < raysCnt; j++) {
-              mycanvasCtx.lineTo(j * step, projection[j] * (projectionCanvasHeight - 10));
+              intensityCanvasCtx.lineTo(j * step, projectionCanvasHeight * (1 - projection[j]));
           }
+          intensityCanvasCtx.stroke();
+          
+          // Insert gap into generated HTML
+          projectionImages.appendChild(document.createTextNode(" "));
 
-          mycanvasCtx.stroke();
-          */
-
+          // Display hatching image
+          var hatchingCanvas = createCanvasElement(projectionHatchingName + i);
+          var hatchingCanvasCtx = hatchingCanvas.getContext("2d");
+          projectionImages.appendChild(hatchingCanvas);
           for(var j = 0; j < raysCnt; j++) {
               var intensity = Math.round(projection[j] * projection[j] * projection[j] * 256);
-              mycanvasCtx.fillStyle = "rgb(" + [intensity,intensity,intensity].join(',') + ")";
-              mycanvasCtx.fillRect(j * step, 0, Math.round(step) + 1, projectionCanvasHeight);
+              hatchingCanvasCtx.fillStyle = "rgb(" + [intensity,intensity,intensity].join(',') + ")";
+              hatchingCanvasCtx.fillRect(j * step, 0, Math.round(step) + 1, projectionCanvasHeight);
           }
-      }
-
-      //traceXRays(45 * 3.14 / 180, r, dx, dy, 20, r * 2);      
+      }  
 
       backprojectionGathering();
       
     });
+    
+    function createCanvasElement(name) {
+    
+      var mycanvas = document.createElement("canvas");
+      mycanvas.id = name;
+      mycanvas.width = projectionLength;
+      mycanvas.height = projectionCanvasHeight;
+      mycanvas.style.border   = "1px solid";
+      
+      return mycanvas;
+    }
+    
+    function cleanUpPreviousResults() {
+    
+      var projectionImages = document.getElementById("projectionImages");
+      while (projectionImages.firstChild) {
+          projectionImages.removeChild(projectionImages.firstChild);
+      }
+      
+      var mycanvas = document.getElementById("tomographyCanvas");
+      var mycanvasCtx = mycanvas.getContext("2d");
+      
+      // Fill canvas with white color
+      mycanvasCtx.globalAlpha = 1;
+      mycanvasCtx.fillStyle = 'white';
+      mycanvasCtx.fillRect(0, 0, width, height);
+    }
     
     function traceXRays(angle, radius, dx, dy, raysCnt, projectionLength) {
 
@@ -125,15 +143,10 @@ function init() {
       var mycanvas = document.getElementById("tomographyCanvas");
       var mycanvasCtx = mycanvas.getContext("2d");
       
-      // Fill canvas with white color
-      mycanvasCtx.globalAlpha = 1;
-      mycanvasCtx.fillStyle = 'white';
-      mycanvasCtx.fillRect(0, 0, width, height);
-      
       // http://stackoverflow.com/questions/2359537/how-to-change-the-opacity-alpha-transparency-of-an-element-in-a-canvas-elemen
-      mycanvasCtx.globalAlpha = 0.05;
+      mycanvasCtx.globalAlpha = angleStep * 2.0 / (toAngle - fromAngle + 1);
       for(var i = fromAngle; i <= toAngle; i+=angleStep) {
-          var c = document.getElementById("generated_" + i);
+          var c = document.getElementById(projectionHatchingName + i);
           // http://creativejs.com/2012/01/day-10-drawing-rotated-images-into-canvas/
           mycanvasCtx.save(); 
           mycanvasCtx.translate((width - c.width) / 2, (height - c.height) / 2);
@@ -145,6 +158,7 @@ function init() {
     }
 
     function displayDefaultImage(canvas) {
+    
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, width, height);
 
@@ -169,6 +183,41 @@ function init() {
       ctx.fill();
     }
 
+    // Trace the ray and calculate its intencity
+    // http://stackoverflow.com/questions/4672279/bresenham-algorithm-in-javascript
+    function xray(x0, y0, x1, y1){
+      var dx = Math.abs(x1-x0);
+      var dy = Math.abs(y1-y0);
+      var sx = (x0 < x1) ? 1 : -1;
+      var sy = (y0 < y1) ? 1 : -1;
+      var err = dx-dy;
+
+      var blackPixelsCnt = 0;
+      var allPixelsCnt = 0;
+      var terminationConst = 1.1;
+
+      while(true){
+        // getPixel
+        if(x0 >= 0 && x0 < width && y0 >= 0 && y0 < height) {
+            var pixel = ctx.getImageData(Math.round(x0), Math.round(y0), 1, 1);
+            var data = pixel.data;
+            if(data[0] == 0) {
+              blackPixelsCnt++;
+            }
+            allPixelsCnt++;
+        }
+
+        if ((Math.abs(x0-x1) < terminationConst) && (Math.abs(y0-y1) < terminationConst)) break;
+        var e2 = 2*err;
+        if (e2 >-dy){ err -= dy; x0  += sx; }
+        if (e2 < dx){ err += dx; y0  += sy; }
+      }
+
+      return 1.0 - blackPixelsCnt * 1.0 / allPixelsCnt;
+    }
+    
+    // Just used for debugging
+    // TODO: remove
     // http://stackoverflow.com/questions/4672279/bresenham-algorithm-in-javascript
     function line(x0, y0, x1, y1){
       var dx = Math.abs(x1-x0);
@@ -188,35 +237,5 @@ function init() {
         if (e2 >-dy){ err -= dy; x0  += sx; }
         if (e2 < dx){ err += dx; y0  += sy; }
       }
-    }
-
-    // http://stackoverflow.com/questions/4672279/bresenham-algorithm-in-javascript
-    function xray(x0, y0, x1, y1){
-      var dx = Math.abs(x1-x0);
-      var dy = Math.abs(y1-y0);
-      var sx = (x0 < x1) ? 1 : -1;
-      var sy = (y0 < y1) ? 1 : -1;
-      var err = dx-dy;
-
-      var blackPixelsCnt = 0;
-      var allPixelsCnt = 0;
-      var terminationConst = 1.1;
-
-      while(true){
-        // getPixel
-        var pixel = ctx.getImageData(Math.round(x0), Math.round(y0), 1, 1);
-        var data = pixel.data;
-        if(data[0] == 0) {
-          blackPixelsCnt++;
-        }
-        allPixelsCnt++;
-
-        if ((Math.abs(x0-x1) < terminationConst) && (Math.abs(y0-y1) < terminationConst)) break;
-        var e2 = 2*err;
-        if (e2 >-dy){ err -= dy; x0  += sx; }
-        if (e2 < dx){ err += dx; y0  += sy; }
-      }
-
-      return 1.0 - blackPixelsCnt * 1.0 / allPixelsCnt;
     }
 }
