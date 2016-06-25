@@ -13,14 +13,17 @@ function init() {
 
     var projectionLength = r * 2;
     var raysCnt = 70;
+    var fromAngle = 0;
+    var toAngle = 360;
     var angleStep = 10;
 
     var projectionCanvasHeight = projectionLength;
 
     displayDefaultImage();
 
+    // Paint on originalImgCanvas
     originalImgCanvas.addEventListener('click', function(event) { 
-            var x = event.pageX - elemLeft;
+        var x = event.pageX - elemLeft;
         var y = event.pageY - elemTop;
         var radius = 5;
         ctx.beginPath();
@@ -32,12 +35,12 @@ function init() {
     var simulateBtn = document.getElementById("simulateBtn");
     simulateBtn.addEventListener('click', function(event) { 
 
-        var projectionImages = document.getElementById("projectionImages");
+      var projectionImages = document.getElementById("projectionImages");
       while (projectionImages.firstChild) {
           projectionImages.removeChild(projectionImages.firstChild);
       }
 
-      for(var i = 0; i <= 360; i+=angleStep) {
+      for(var i = fromAngle; i <= toAngle; i+=angleStep) {
           var al = i * Math.PI / 180;
           var circleX = dx + r * Math.cos(al);
           var circleY = dy + r * Math.sin(al);
@@ -57,7 +60,9 @@ function init() {
           mycanvas.style.border   = "1px solid";
           var mycanvasCtx = mycanvas.getContext("2d");
 
-          projectionImages.appendChild(document.createElement("br"))
+          projectionImages.appendChild(document.createElement("br")); 
+          projectionImages.appendChild(document.createTextNode("angle of projection: " + i + String.fromCharCode(176)));
+          projectionImages.appendChild(document.createElement("br"));
           projectionImages.appendChild(mycanvas);
 
           var step = projectionLength * 1.0 / raysCnt;
@@ -120,19 +125,21 @@ function init() {
       var mycanvas = document.getElementById("tomographyCanvas");
       var mycanvasCtx = mycanvas.getContext("2d");
       
+      // Fill canvas with white color
       mycanvasCtx.globalAlpha = 1;
       mycanvasCtx.fillStyle = 'white';
-        mycanvasCtx.fillRect(0, 0, width, height);
+      mycanvasCtx.fillRect(0, 0, width, height);
+      
       // http://stackoverflow.com/questions/2359537/how-to-change-the-opacity-alpha-transparency-of-an-element-in-a-canvas-elemen
       mycanvasCtx.globalAlpha = 0.05;
-      for(var i = 0; i <= 360; i+=angleStep) {
+      for(var i = fromAngle; i <= toAngle; i+=angleStep) {
           var c = document.getElementById("generated_" + i);
           // http://creativejs.com/2012/01/day-10-drawing-rotated-images-into-canvas/
           mycanvasCtx.save(); 
           mycanvasCtx.translate((width - c.width) / 2, (height - c.height) / 2);
           mycanvasCtx.translate(c.width / 2, c.height / 2)
           mycanvasCtx.rotate((i + 270) * Math.PI / 180);
-          mycanvasCtx.drawImage(c,-c.width / 2, -c.height / 2);
+          mycanvasCtx.drawImage(c,-c.width / 2, - c.height / 2);
           mycanvasCtx.restore();
       }
     }
