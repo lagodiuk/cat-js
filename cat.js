@@ -78,7 +78,12 @@ function init() {
           }
       }  
 
-      backprojectionGathering();
+      // Static visualization
+      //backprojectionGathering();
+      
+      // Visualization with animation
+      scale = 0.01;
+      //window.requestAnimationFrame(animationBackprojectionGathering);
       
     });
     
@@ -102,11 +107,6 @@ function init() {
       
       var mycanvas = document.getElementById("tomographyCanvas");
       var mycanvasCtx = mycanvas.getContext("2d");
-      
-      // Fill canvas with white color
-      mycanvasCtx.globalAlpha = 1;
-      mycanvasCtx.fillStyle = 'white';
-      mycanvasCtx.fillRect(0, 0, width, height);
     }
     
     function traceXRays(angle, radius, dx, dy, raysCnt, projectionLength) {
@@ -142,6 +142,8 @@ function init() {
     
       var mycanvas = document.getElementById("tomographyCanvas");
       var mycanvasCtx = mycanvas.getContext("2d");
+      var width = mycanvas.width;
+      var height = mycanvas.height;
       
       // http://stackoverflow.com/questions/2359537/how-to-change-the-opacity-alpha-transparency-of-an-element-in-a-canvas-elemen
       mycanvasCtx.globalAlpha = angleStep * 2.0 / (toAngle - fromAngle + 1);
@@ -149,12 +151,47 @@ function init() {
           var c = document.getElementById(projectionHatchingName + i);
           // http://creativejs.com/2012/01/day-10-drawing-rotated-images-into-canvas/
           mycanvasCtx.save(); 
-          mycanvasCtx.translate((width - c.width) / 2, (height - c.height) / 2);
-          mycanvasCtx.translate(c.width / 2, c.height / 2)
+          mycanvasCtx.translate(width / 2, height / 2);
           mycanvasCtx.rotate((i + 270) * Math.PI / 180);
-          mycanvasCtx.drawImage(c,-c.width / 2, - c.height / 2);
+          mycanvasCtx.drawImage(c,-c.width / 2, -c.height / 2);
           mycanvasCtx.restore();
       }
+    }
+    
+    var scale = 0.01;
+    window.requestAnimationFrame(animationBackprojectionGathering);
+    function animationBackprojectionGathering() {
+      var mycanvas = document.getElementById("tomographyCanvas");
+      var mycanvasCtx = mycanvas.getContext("2d");
+      var width = mycanvas.width;
+      var height = mycanvas.height;
+      
+      scale += 0.001;
+      if(scale > 1) {
+        scale = 0.01;
+      }
+      // Fill canvas with white color
+      mycanvasCtx.globalAlpha = 1;
+      mycanvasCtx.fillStyle = 'white';
+      mycanvasCtx.fillRect(0, 0, width, height);
+      
+      // http://stackoverflow.com/questions/2359537/how-to-change-the-opacity-alpha-transparency-of-an-element-in-a-canvas-elemen
+      mycanvasCtx.globalAlpha = angleStep * 2.0 / (toAngle - fromAngle + 1);
+      for(var i = fromAngle; i <= toAngle; i+=angleStep) {
+          var c = document.getElementById(projectionHatchingName + i);
+          if(!c) {
+            break;
+          }
+          // http://creativejs.com/2012/01/day-10-drawing-rotated-images-into-canvas/
+          mycanvasCtx.save(); 
+          mycanvasCtx.translate(width / 2, height / 2);
+          mycanvasCtx.rotate((i + 270) * Math.PI / 180);
+          mycanvasCtx.drawImage(c, -c.width / 2, -c.height / 2, c.width, c.height * scale);
+          
+          mycanvasCtx.restore();
+      }
+      
+      window.requestAnimationFrame(animationBackprojectionGathering);
     }
 
     function displayDefaultImage(canvas) {
@@ -199,13 +236,13 @@ function init() {
       while(true){
         // getPixel
         if(x0 >= 0 && x0 < width && y0 >= 0 && y0 < height) {
-            var pixel = ctx.getImageData(Math.round(x0), Math.round(y0), 1, 1);
+            var pixel = ctx.getImageData(x0, y0, 1, 1);
             var data = pixel.data;
             if(data[0] == 0) {
               blackPixelsCnt++;
             }
-            allPixelsCnt++;
         }
+        allPixelsCnt++;
 
         if ((Math.abs(x0-x1) < terminationConst) && (Math.abs(y0-y1) < terminationConst)) break;
         var e2 = 2*err;
