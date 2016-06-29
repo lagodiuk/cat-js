@@ -12,7 +12,7 @@ function init() {
     var tomographRadius = 80;
 
     var projectionLength = tomographRadius * 2;
-    var raysCnt = 70;
+    var raysCnt = projectionLength;
     var fromAngle = 0;
     var toAngle = 360;
     var angleStep = 10;
@@ -43,6 +43,9 @@ function init() {
       cleanUpPreviousResults();
 
       var projectionImages = document.getElementById("projectionImages");
+      
+      var radonTransformCanvas = document.getElementById("radonTransformCanvas");
+      var radonTransformCanvasCtx = radonTransformCanvas.getContext("2d");
 
       for(var i = fromAngle; i <= toAngle; i+=angleStep) {
 
@@ -77,6 +80,13 @@ function init() {
               var intensity = Math.round(projection[j] * projection[j] * projection[j] * 256);
               hatchingCanvasCtx.fillStyle = "rgb(" + [intensity,intensity,intensity].join(',') + ")";
               hatchingCanvasCtx.fillRect(j * step, 0, Math.round(step) + 1, projectionCanvasHeight);
+          }
+          
+          // Display Radon Transform
+          for(var j = 0; j < raysCnt; j++) {
+              var intensity = Math.round(projection[j] * projection[j] * projection[j] * 256);
+              radonTransformCanvasCtx.fillStyle = "rgb(" + [intensity,intensity,intensity].join(',') + ")";
+              radonTransformCanvasCtx.fillRect(i / 2 + 5, j, angleStep / 2, 1);
           }
       }  
       
