@@ -15,7 +15,9 @@ function init() {
     var raysCnt = projectionLength;
     var fromAngle = 0;
     var toAngle = 360;
-    var angleStep = 10;
+    var angleStep = 4;
+    
+    var animationDelay = 50;
 
     var projectionCanvasHeight = projectionLength;
     var projectionHatchingName = "generated_";
@@ -36,19 +38,14 @@ function init() {
         ctx.fillStyle = 'black';
         ctx.fill();
     }, false);
-
-    var simulateBtn = document.getElementById("simulateBtn");
-    simulateBtn.addEventListener('click', function(event) { 
-
-      cleanUpPreviousResults();
-
-      var projectionImages = document.getElementById("projectionImages");
+    
+    var i;
+    function loopIter() {
+          var projectionImages = document.getElementById("projectionImages");
       
-      var radonTransformCanvas = document.getElementById("radonTransformCanvas");
-      var radonTransformCanvasCtx = radonTransformCanvas.getContext("2d");
-
-      for(var i = fromAngle; i <= toAngle; i+=angleStep) {
-
+          var radonTransformCanvas = document.getElementById("radonTransformCanvas");
+          var radonTransformCanvasCtx = radonTransformCanvas.getContext("2d");
+    
           var al = i * Math.PI / 180;
           var projection = traceXRays(al, tomographRadius, dx, dy, raysCnt, projectionLength);
 
@@ -86,22 +83,33 @@ function init() {
           for(var j = 0; j < raysCnt; j++) {
               var intensity = Math.round(projection[j] * projection[j] * projection[j] * 256);
               radonTransformCanvasCtx.fillStyle = "rgb(" + [intensity,intensity,intensity].join(',') + ")";
-              radonTransformCanvasCtx.fillRect(i / 2 + 5, j, angleStep / 2, 1);
+              radonTransformCanvasCtx.fillRect(i / 2 + 5, j, angleStep, 1);
           }
-      }  
-      
-      if(dynamicVisualization) {
-          // Visualization with animation
-          animationAngle = fromAngle;
-          if(!animationIsScheduled) {
-              animationIsScheduled = true;
-              setTimeout(animationBackprojectionGathering, animationDelay);
+          
+          i += angleStep;
+          if(i <= toAngle) {
+              setTimeout(loopIter, 0);
+          } else {
+              if(dynamicVisualization) {
+              // Visualization with animation
+              animationAngle = fromAngle;
+              if(!animationIsScheduled) {
+                  animationIsScheduled = true;
+                  setTimeout(animationBackprojectionGathering, 0);
+              }
+              } else {
+                  // Static visualization
+                  backprojectionGathering();
+              }
           }
-      } else {
-          // Static visualization
-          backprojectionGathering();
-      }
-            
+    }
+
+    var simulateBtn = document.getElementById("simulateBtn");
+    simulateBtn.addEventListener('click', function(event) { 
+      animationIsScheduled = false;
+      cleanUpPreviousResults();
+      i = fromAngle;
+      loopIter();
     });
     
     function createCanvasElement(name) {
@@ -128,6 +136,12 @@ function init() {
       mycanvasCtx.globalAlpha = 1;
       mycanvasCtx.fillStyle = 'white';
       mycanvasCtx.fillRect(0, 0, width, height);
+      
+      var radonTransformCanvas = document.getElementById("radonTransformCanvas");
+      var radonTransformCanvasCtx = radonTransformCanvas.getContext("2d");
+      radonTransformCanvasCtx.globalAlpha = 1;
+      radonTransformCanvasCtx.fillStyle = 'white';
+      radonTransformCanvasCtx.fillRect(0, 0, width, height);
     }
     
     function traceXRays(angle, radius, dx, dy, raysCnt, projectionLength) {
@@ -180,12 +194,12 @@ function init() {
     }
     
     var animationAngle = fromAngle;
-    var animationDelay = 500;
-    var animationIsScheduled = true;
-    if(dynamicVisualization) {
-        setTimeout(animationBackprojectionGathering, animationDelay);
-    }
+    var animationIsScheduled = false;
     function animationBackprojectionGathering() {
+      if(!animationIsScheduled) {
+        return;
+      }
+    
       var mycanvas = document.getElementById("tomographyCanvas");
       var mycanvasCtx = mycanvas.getContext("2d");
       var width = mycanvas.width;
